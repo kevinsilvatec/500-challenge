@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desafio das Economias — R$1 a R$500</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F5EFE0; --paper-2:#EFE7D2; --line:#D9CDA9; --ink:#1B2620;
+    --green:#1F4D3A; --green-2:#173B2C; --gold:#A9812F; --stamp:#8C3331; --muted:#847C60;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper);
+    background-image:linear-gradient(var(--line) 1px, transparent 1px);
+    background-size:100% 2.1em;
+    color:var(--ink); font-family:'IBM Plex Mono', monospace;
+    -webkit-font-smoothing:antialiased; padding:0 0 3em 0;
+  }
+  .wrap{ max-width:640px; margin:0 auto; padding:1.6em 1.1em 0; }
+  header{ border-bottom:2px solid var(--ink); padding-bottom:1em; margin-bottom:1.2em;
+    display:flex; justify-content:space-between; align-items:flex-end; gap:1em; }
+  h1{ font-family:'Fraunces', serif; font-weight:700; font-size:1.85em; line-height:1.05; margin:0 0 .15em 0; letter-spacing:-.01em; }
+  h1 em{ font-style:italic; font-weight:400; color:var(--green); }
+  header p{ margin:0; color:var(--muted); font-size:.85em; }
+  .who button{ background:none; border:none; color:var(--stamp); font-family:inherit; font-size:.7em; cursor:pointer; text-decoration:underline; padding:0; white-space:nowrap; }
+
+  .ledger{ background:var(--paper-2); border:1px solid var(--line); border-radius:2px; padding:1em 1.1em; margin-bottom:1.5em; }
+  .ledger-row{ display:flex; justify-content:space-between; align-items:baseline; font-size:.82em; color:var(--muted); padding:.25em 0; }
+  .ledger-row + .ledger-row{ border-top:1px dashed var(--line); }
+  .ledger-row .val{ color:var(--ink); font-weight:600; font-size:1.05em; }
+  .ledger-row .val.big{ color:var(--green); font-size:1.3em; }
+
+  .track{ height:10px; background:var(--paper); border:1px solid var(--line); border-radius:5px; margin:.9em 0 .4em; overflow:hidden; }
+  .track-fill{ height:100%; background:var(--green); width:0%; transition:width .4s ease; }
+  .track-label{ font-size:.75em; color:var(--muted); display:flex; justify-content:space-between; }
+
+  .sync{ font-size:.7em; color:var(--muted); text-align:center; margin:-1em 0 1.4em; }
+  .sync.err{ color:var(--stamp); }
+
+  details{ margin-bottom:.6em; border:1px solid var(--line); border-radius:2px; background:var(--paper); }
+  summary{ list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; padding:.75em .9em; font-family:'Fraunces', serif; font-weight:600; font-size:1.02em; }
+  summary::-webkit-details-marker{ display:none; }
+  summary::after{ content:'+'; font-family:'IBM Plex Mono', monospace; font-weight:400; font-size:1.2em; color:var(--muted); transition:transform .2s ease; }
+  details[open] summary::after{ transform:rotate(45deg); }
+  summary .mini{ font-size:.7em; color:var(--muted); font-weight:400; font-family:'IBM Plex Mono', monospace; }
+
+  .grid{ display:grid; grid-template-columns:repeat(5, 1fr); gap:.4em; padding:0 .9em 1em; }
+  .tile{ position:relative; aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+    border:1px solid var(--line); border-radius:3px; background:var(--paper); color:var(--ink);
+    font-size:.85em; font-weight:500; cursor:pointer; user-select:none;
+    transition:background .15s ease, color .15s ease, border-color .15s ease, opacity .15s ease; }
+  .tile:active{ transform:scale(.94); }
+  .tile.busy{ opacity:.45; pointer-events:none; }
+  .tile.done{ background:var(--green); border-color:var(--green-2); color:var(--paper); }
+  .tile.done::after{ content:''; position:absolute; inset:-1px; border:1.5px solid var(--gold); border-radius:3px; transform:rotate(-6deg); opacity:.85; pointer-events:none; }
+  @keyframes stamp{ 0%{ transform:scale(1.35) rotate(-10deg); opacity:0; } 60%{ transform:scale(.95) rotate(-6deg); opacity:1; } 100%{ transform:scale(1) rotate(-6deg); opacity:.85; } }
+  .tile.stamped::after{ animation:stamp .28s ease-out; }
+
+  footer{ padding:1.4em .9em 0; text-align:center; }
+  button.reset{ font-family:'IBM Plex Mono', monospace; background:none; border:1px solid var(--stamp); color:var(--stamp);
+    padding:.6em 1.1em; border-radius:2px; font-size:.8em; cursor:pointer; }
+  button.reset:active{ background:var(--stamp); color:var(--paper); }
+
+  .loading{ text-align:center; padding:3em 1em; color:var(--muted); font-size:.85em; }
+
+  .gate{ max-width:420px; margin:3em auto; padding:1.6em; background:var(--paper-2); border:1px solid var(--line); border-radius:2px; }
+  .gate h2{ font-family:'Fraunces', serif; font-size:1.3em; margin:0 0 .4em; }
+  .gate p{ font-size:.82em; color:var(--muted); line-height:1.5; }
+  .gate input{ width:100%; font-family:'IBM Plex Mono', monospace; padding:.6em; border:1px solid var(--line); border-radius:2px; background:var(--paper); color:var(--ink); margin:.6em 0; }
+  .gate button{ font-family:'IBM Plex Mono', monospace; background:var(--green); color:var(--paper); border:none; padding:.65em 1.1em; border-radius:2px; cursor:pointer; font-size:.85em; }
+  .gate .err{ color:var(--stamp); font-size:.78em; margin-top:.4em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Desafio das <em>economias</em></h1>
+      <p>Guarde de R$1 a R$500, no valor que quiser.</p>
+    </div>
+    <div class="who" id="whoBox"></div>
+  </header>
+
+  <div id="app"><div class="loading">Carregando…</div></div>
+
+  <footer>
+    <button class="reset" id="resetBtn" style="display:none">Reiniciar desafio</button>
+  </footer>
+</div>
+
+<script>
+/* ====== CONFIGURE ANTES DE PUBLICAR ====== */
+const GH_OWNER  = 'kevinsilvatec';
+const GH_REPO   = '500-challenge';
+const GH_BRANCH = 'main';
+const GH_PATH   = 'data.json';
+/* ========================================== */
+
+const TOTAL_NUMBERS = 500;
+const BLOCK_SIZE = 50;
+const GOAL = 125250;
+const TOKEN_KEY = 'desafio500_gh_token';
+
+let checked = new Set();
+let currentSha = null;
+let token = localStorage.getItem(TOKEN_KEY);
+
+function money(n){ return n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }
+
+function apiHeaders(){
+  return {
+    'Authorization': `Bearer ${token}`,
+    'Accept': 'application/vnd.github+json'
+  };
+}
+
+function apiUrl(){
+  return `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}?ref=${GH_BRANCH}`;
+}
+
+function b64EncodeUnicode(str){
+  return btoa(unescape(encodeURIComponent(str)));
+}
+function b64DecodeUnicode(str){
+  return decodeURIComponent(escape(atob(str)));
+}
+
+async function ghGet(){
+  const res = await fetch(apiUrl(), { headers: apiHeaders() });
+  if(res.status === 401 || res.status === 403){
+    throw new Error('auth');
+  }
+  if(!res.ok) throw new Error('fetch:' + res.status);
+  const json = await res.json();
+  currentSha = json.sha;
+  const decoded = b64DecodeUnicode(json.content.replace(/\n/g, ''));
+  const parsed = JSON.parse(decoded);
+  return Array.isArray(parsed.checked) ? parsed.checked : [];
+}
+
+async function ghPut(newChecked, message){
+  const body = {
+    message,
+    content: b64EncodeUnicode(JSON.stringify({ checked: newChecked }, null, 2)),
+    branch: GH_BRANCH,
+    sha: currentSha
+  };
+  const res = await fetch(apiUrl(), {
+    method: 'PUT',
+    headers: { ...apiHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if(res.status === 409) throw new Error('conflict');
+  if(res.status === 401 || res.status === 403) throw new Error('auth');
+  if(!res.ok) throw new Error('put:' + res.status);
+  const json = await res.json();
+  currentSha = json.content.sha;
+}
+
+function setSync(state, msg){
+  const el = document.getElementById('syncEl');
+  if(!el) return;
+  el.textContent = msg;
+  el.className = 'sync' + (state === 'err' ? ' err' : '');
+}
+
+function buildBlocks(){
+  const blocks = [];
+  for(let start = 1; start <= TOTAL_NUMBERS; start += BLOCK_SIZE){
+    blocks.push({ start, end: Math.min(start + BLOCK_SIZE - 1, TOTAL_NUMBERS) });
+  }
+  return blocks;
+}
+function sumChecked(){ let s = 0; checked.forEach(n => s += n); return s; }
+
+function renderGate(errMsg){
+  document.getElementById('whoBox').innerHTML = '';
+  document.getElementById('resetBtn').style.display = 'none';
+  document.getElementById('app').innerHTML = `
+    <div class="gate">
+      <h2>Entrar com o token</h2>
+      <p>Cole o token do GitHub com permissão nesse repositório. Ele fica salvo só neste navegador.</p>
+      <input id="tokenInput" type="password" placeholder="github_pat_xxxxxxxxxxxx">
+      <button id="gateBtn">Entrar</button>
+      ${errMsg ? `<div class="err">${errMsg}</div>` : ''}
+    </div>`;
+  document.getElementById('gateBtn').addEventListener('click', () => {
+    const tok = document.getElementById('tokenInput').value.trim();
+    if(!tok) return;
+    token = tok;
+    localStorage.setItem(TOKEN_KEY, tok);
+    boot();
+  });
+}
+
+function render(){
+  const app = document.getElementById('app');
+  document.getElementById('resetBtn').style.display = 'inline-block';
+  document.getElementById('whoBox').innerHTML = `<button id="logoutBtn">trocar token</button>`;
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem(TOKEN_KEY);
+    token = null;
+    renderGate();
+  });
+
+  const savedSum = sumChecked();
+  const remaining = GOAL - savedSum;
+  const pct = Math.min(100, (savedSum / GOAL) * 100);
+  const blocks = buildBlocks();
+  const firstOpenIdx = blocks.findIndex(b => {
+    for(let n = b.start; n <= b.end; n++) if(!checked.has(n)) return true;
+    return false;
+  });
+
+  let html = `
+    <div class="ledger">
+      <div class="ledger-row"><span>Meta total</span><span class="val">${money(GOAL)}</span></div>
+      <div class="ledger-row"><span>Guardado até agora</span><span class="val big">${money(savedSum)}</span></div>
+      <div class="ledger-row"><span>Falta guardar</span><span class="val">${money(remaining)}</span></div>
+      <div class="track"><div class="track-fill" style="width:${pct}%"></div></div>
+      <div class="track-label"><span>${checked.size} de ${TOTAL_NUMBERS} valores</span><span>${pct.toFixed(1)}%</span></div>
+    </div>
+    <div class="sync" id="syncEl">sincronizado</div>
+  `;
+
+  blocks.forEach((b, i) => {
+    let doneInBlock = 0;
+    for(let n = b.start; n <= b.end; n++) if(checked.has(n)) doneInBlock++;
+    const isOpen = i === firstOpenIdx || (firstOpenIdx === -1 && i === blocks.length - 1);
+    html += `<details data-idx="${i}" ${isOpen ? 'open' : ''}>
+      <summary><span>R$${b.start} – R$${b.end}</span><span class="mini">${doneInBlock}/${BLOCK_SIZE}</span></summary>
+      <div class="grid">`;
+    for(let n = b.start; n <= b.end; n++){
+      html += `<div class="tile ${checked.has(n) ? 'done' : ''}" data-n="${n}">${n}</div>`;
+    }
+    html += `</div></details>`;
+  });
+
+  app.innerHTML = html;
+  app.querySelectorAll('.tile').forEach(tile => tile.addEventListener('click', onTileClick));
+}
+
+async function onTileClick(e){
+  const tile = e.currentTarget;
+  const n = parseInt(tile.dataset.n, 10);
+  const wasChecked = checked.has(n);
+  tile.classList.add('busy');
+  setSync('ok', 'salvando…');
+
+  let attempt = 0;
+  while(attempt < 3){
+    attempt++;
+    try{
+      if(attempt > 1){
+        const remote = await ghGet();
+        checked = new Set(remote);
+      }
+      if(wasChecked) checked.delete(n); else checked.add(n);
+      await ghPut(Array.from(checked), `${wasChecked ? 'desmarca' : 'marca'} R$${n}`);
+      setSync('ok', 'sincronizado');
+      render();
+      const el = document.querySelector(`.tile[data-n="${n}"]`);
+      if(el && !wasChecked) el.classList.add('stamped');
+      return;
+    }catch(err){
+      if(err.message === 'auth'){
+        renderGate('Token inválido ou sem permissão nesse repositório.');
+        return;
+      }
+      if(err.message === 'conflict'){
+        continue;
+      }
+      setSync('err', 'falha ao salvar — tente de novo');
+      render();
+      return;
+    }
+  }
+  setSync('err', 'conflito ao salvar — tente de novo');
+  render();
+}
+
+document.getElementById('resetBtn').addEventListener('click', async () => {
+  if(!confirm('Reiniciar o desafio e apagar tudo que já foi marcado?')) return;
+  try{
+    await ghGet();
+    checked = new Set();
+    await ghPut([], 'reinicia o desafio');
+    render();
+  }catch(err){
+    setSync('err', 'falha ao reiniciar');
+  }
+});
+
+async function boot(){
+  if(!token){ renderGate(); return; }
+  document.getElementById('app').innerHTML = '<div class="loading">Carregando planilha do repositório…</div>';
+  try{
+    const remote = await ghGet();
+    checked = new Set(remote);
+    render();
+  }catch(err){
+    if(err.message === 'auth'){
+      renderGate('Token inválido ou sem permissão nesse repositório.');
+    }else{
+      document.getElementById('app').innerHTML = '<div class="loading">Não consegui carregar o data.json. Confirme se o arquivo existe no repositório e tente recarregar a página.</div>';
+    }
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
